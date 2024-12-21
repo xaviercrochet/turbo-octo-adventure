@@ -39,8 +39,8 @@ The project consists of two main components:
 
 ### Prerequisites
 
-- Docker and Docker Compose (for containerized deployment)
-- Go 1.x (for local development)
+- Docker
+- Go 1.x 
 - ZITADEL account and project configuration
 
 ### Environment Configuration
@@ -57,9 +57,9 @@ REDIRECT_URI=    # OAuth redirect URI
 KEY_FILE=        # API private key path
 ```
 
-## Deployment Options
+## Development/Deployment Options
 
-### Docker Deployment
+### Docker
 
 Start both applications using Docker Compose:
 
