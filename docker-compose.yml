@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      dockerfile: cmd/api/Dockerfile 
+    env_file:
+      - .env
+    ports:
+      - "8090:${API_PORT}"
+    command: ["./api", "-domain=${DOMAIN}", "-key=${KEY_FILE}", "-port=${API_PORT}"]
+    volumes:
+      - ./key.json:/app/key.json 
+
+  web:
+    build: 
+      dockerfile: cmd/web/Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8089:${WEB_PORT}"
+    command: [
+      "./web", 
+      "-domain=${DOMAIN}", 
+      "-clientID=${CLIENT_ID}", 
+      "-key=${WEB_KEY}", 
+      "-port=${WEB_PORT}", 
+      "-redirectURI=http://localhost:${WEB_PORT}/auth/callback", 
+      "-apiHostname=api", 
+      "-apiPort=${API_PORT}",
+    ]
+    depends_on:
+      - api
