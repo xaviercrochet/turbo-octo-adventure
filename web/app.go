@@ -1,4 +1,4 @@
-package app
+package web
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"text/template"
 
 	"github.com/xaviercrochet/turbo-octo-adventure/pkg/net"
-	"github.com/xaviercrochet/turbo-octo-adventure/web/app/feed_api"
+	"github.com/xaviercrochet/turbo-octo-adventure/web/feed_api"
 	"github.com/zitadel/zitadel-go/v3/pkg/authentication"
 	openid "github.com/zitadel/zitadel-go/v3/pkg/authentication/oidc"
 	"github.com/zitadel/zitadel-go/v3/pkg/zitadel"
