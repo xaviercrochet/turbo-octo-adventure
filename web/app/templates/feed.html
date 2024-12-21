@@ -1,0 +1,54 @@
+<html>
+  <head>
+    <title>Scrobble</title>
+  </head>
+  <body>
+    <div style="float: right; margin-right: 50px">
+      <p>Logged in as: {{.LoggedInUser}}</p>
+      <a style="float: right" href="/auth/logout">Logout</a>
+    </div>
+
+
+    <div style="width: 70%; margin-left: auto">
+      <h1 >Music Feed</h1>
+      {{ if not .Health }}
+      <h2 style="color: red">Feed API is Down!</h2>
+      {{ end }}
+    </div>
+    {{ if .Health }}
+    <div style="width: 70%; margin-left: auto">
+      {{ if .Feed.WriteAccess }}
+      <div>
+        <p>Select a different feed</p>
+        <form method="POST" action="/select_feed">
+          <label for="name">Name:</label>
+          <input type="text" id="name" name="name" placeholder="xcrochet">
+          <button type="submit">Submit</button>
+        </form>
+      </div>
+
+      {{ end }}
+      <table>
+        <caption>
+          Music feed of {{.Feed.Feed.Username}}
+        </caption>
+        <thead>
+          <tr>
+            <th style="text-align: left">Song Title</th>
+            <th style="text-align: right">Listened At</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Feed.Feed.Songs}}
+          <tr>
+            <td>{{.Title}}</td>
+            <td>{{.ListenedAt.Format "2006-01-02 15:04:05"}}</td>
+            {{end}}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {{ end }}
+  </body>
+</html>
