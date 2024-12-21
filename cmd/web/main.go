@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/xaviercrochet/turbo-octo-adventure/web/app"
+	"github.com/xaviercrochet/turbo-octo-adventure/web"
 )
 
 var (
@@ -41,8 +41,8 @@ func main() {
 	}
 
 	router := http.NewServeMux()
-	options := app.NewServerOptions(base64Key, *apiHostname, *apiPort, *domain, *clientID, *redirectURI)
-	if err := app.SetupRoutes(ctx, router, options); err != nil {
+	options := web.NewServerOptions(base64Key, *apiHostname, *apiPort, *domain, *clientID, *redirectURI)
+	if err := web.SetupRoutes(ctx, router, options); err != nil {
 		slog.Error("could not setup routes", "error", err)
 		os.Exit(1)
 
