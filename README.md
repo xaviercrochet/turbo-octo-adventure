@@ -109,6 +109,26 @@ make build-web
 - [ZITADEL Go SDK](https://github.com/zitadel/zitadel-go)
 - [Additional Examples](https://github.com/zitadel/zitadel-go/tree/next/example)
 
+## Next
+
+### Tests
+
+- Add unit tests for both web and API
+- Add integration tests for API endpoints
+- Integrate those tests into a CI/CD pipelines
+
+### Logging
+
+- Add request/response logging middleware
+- Add structured logging for both web and API
+
+### MusicBrainz API
+
+MusicBrainz API is rate-limited. 
+
+- Implement rate limiting
+- Cache MusicBrainz responses 
+
 ## Notes 
 
 This project was inspired by examples from the [ZITADEL Go SDK repository](https://github.com/zitadel/zitadel-go/tree/next/example).
