@@ -5,3 +5,6 @@ build-api:
 
 build-web:
 	go build -o bin/web ./cmd/web/main.go
+
+test:
+	go test -v -cover ./...
