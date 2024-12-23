@@ -73,21 +73,26 @@ func GetFeed(username string) (*Feed, error) {
 		return nil, fmt.Errorf("failed to deserialize xml: %w", err)
 	}
 
-	// MAP the deserialized XML response to Feed, the struct that will be used later
-	feedResp := &Feed{
+	return feedXmlToFeed(username, feed), nil
+}
+
+// MAP the deserialized XML response to Feed, the struct that will be used later
+func feedXmlToFeed(username string, feedXml FeedXml) *Feed {
+	feed := &Feed{
 		Username: username,
+		Songs:    []*Song{},
 	}
 
-	for _, entry := range feed.Entries {
+	for _, entry := range feedXml.Entries {
 		song := &Song{
 			Title:      entry.Title,
 			ListenedAt: entry.Updated,
 		}
 
-		feedResp.Songs = append(feedResp.Songs, song)
+		feed.Songs = append(feed.Songs, song)
 	}
 
-	return feedResp, nil
+	return feed
 }
 
 // Feed and Song contain the relevant data for the feed API
