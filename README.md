@@ -102,6 +102,12 @@ make build-api
 make build-web
 ```
 
+### Running tests
+
+```Bash
+make test
+```
+
 ## Documentation
 
 - [Securing APIs with ZITADEL](https://zitadel.com/docs/examples/secure-api/go)
