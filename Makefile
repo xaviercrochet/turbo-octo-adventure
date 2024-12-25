@@ -8,3 +8,6 @@ build-web:
 
 test:
 	go test -v -cover ./...
+
+test-race:
+	go test -v -cover -race ./...
