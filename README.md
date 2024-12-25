@@ -104,8 +104,13 @@ make build-web
 
 ### Running tests
 
-```Bash
+```bash
 make test
+```
+
+```bash
+# run tests with race detector
+make test-race
 ```
 
 ## Documentation
