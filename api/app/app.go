@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sync"
 
 	"github.com/xaviercrochet/turbo-octo-adventure/api/musicbrainz"
 	"github.com/xaviercrochet/turbo-octo-adventure/pkg/net"
@@ -19,7 +20,22 @@ import (
 var (
 	// store, in memory, the username from which the feed will be retrieved from the musicbrainz api
 	selectedUsername = "xcrochet"
+	rwmu             sync.RWMutex
 )
+
+// updates the username used for MusicBrainz requests
+func setSelectedUsername(username string) {
+	rwmu.Lock()
+	selectedUsername = username
+	rwmu.Unlock()
+}
+
+// returns the currently selected username
+func getSelectedUsername() string {
+	rwmu.RLock()
+	defer rwmu.RUnlock()
+	return selectedUsername
+}
 
 type SelectedFeed struct {
 	Name string `json:"name"`
@@ -112,7 +128,8 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 			}
 
 			// update the username from wich '/feed' will retrieve the musicbrainz feed from
-			selectedUsername = selectedFeed.Name
+
+			setSelectedUsername(selectedFeed.Name)
 
 			// OK
 			err = jsonResponse(w, "OK", http.StatusOK)
@@ -141,10 +158,10 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 			}
 
 			authCtx := mw.Context(r.Context())
-			slog.Info("retrieving user feed", "id", authCtx.UserID(), "username", authCtx.Username, "feed_username", selectedUsername)
+			slog.Info("retrieving user feed", "id", authCtx.UserID(), "username", authCtx.Username, "feed_username", getSelectedUsername())
 
 			// retrieve music feed from musicbrainz API
-			feed, err := musicbrainz.GetFeed(selectedUsername)
+			feed, err := musicbrainz.GetFeed(getSelectedUsername())
 
 			// handle client error if any
 			if err == net.ErrNotFound {
