@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	ErrNoAccess     = errors.New("authentication failed")
-	ErrUnauthorized = errors.New("unauthorized")
-	ErrNotFound     = errors.New("resource not found")
-	ErrGeneric      = errors.New("request failed")
+	ErrNoAccess         = errors.New("not authorized")
+	ErrNotAuthenticated = errors.New("not authenticated")
+	ErrNotFound         = errors.New("resource not found")
+	ErrGeneric          = errors.New("request failed")
 )
 
 /*
@@ -23,7 +23,7 @@ func HttpStatusCodeToErr(resp *http.Response) error {
 	case http.StatusOK:
 		return nil
 	case http.StatusUnauthorized:
-		return ErrUnauthorized
+		return ErrNotAuthenticated
 	case http.StatusForbidden:
 		return ErrNoAccess
 	case http.StatusNotFound:
