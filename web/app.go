@@ -104,7 +104,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 			return
 		} else if err == net.ErrUnauthorized {
 			slog.Error("select feed api call failed", "error", err)
-			http.Error(w, err.Error(), http.StatusForbidden)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		} else if err != nil {
 			slog.Error("select feed api call failed", "error", err)
