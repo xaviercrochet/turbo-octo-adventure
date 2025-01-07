@@ -125,7 +125,7 @@ func (c *FeedClient) GetFeed(accessToken string) (*FeedResponse, error) {
 	defer resp.Body.Close()
 
 	if err := net.HttpStatusCodeToErr(resp); err != nil {
-		return nil, fmt.Errorf("failed to reach API")
+		return nil, err
 	}
 
 	body, err := io.ReadAll(resp.Body)
