@@ -102,7 +102,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 			slog.Error("select feed api call failed", "error", err)
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
-		} else if err == net.ErrUnauthorized {
+		} else if err == net.ErrNotAuthenticated {
 			slog.Error("select feed api call failed", "error", err)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
@@ -148,7 +148,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 			// only query for feed if feed API is healthy
 			feed, err := feedClient.GetFeed(authCtx.Tokens.AccessToken)
 			// if the token is not valid anymore, log out the user
-			if err == net.ErrUnauthorized {
+			if err == net.ErrNotAuthenticated {
 				http.Redirect(w, req, "/auth/logout", http.StatusFound)
 				return
 			} else if err != nil {

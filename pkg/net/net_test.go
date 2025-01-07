@@ -17,9 +17,9 @@ func TestHttpStatusCodeToErr(t *testing.T) {
 			err:        nil,
 		},
 		{
-			name:       "should return ErrUnauthorized for StatusUnauthorized",
+			name:       "should return ErrNotAuthenticated for StatusUnauthorized",
 			statusCode: http.StatusUnauthorized,
-			err:        ErrUnauthorized,
+			err:        ErrNotAuthenticated,
 		},
 		{
 			name:       "should return ErrNoAccess for StatusForbidden",
