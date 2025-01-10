@@ -130,8 +130,8 @@ make test-race
 
 ### Logging
 
-- Add request/response logging middleware
-- Add structured logging for both web and API
+- <del>Add request/response logging middleware</del> done
+- <del>Add structured logging for both web and API</del> done
 
 ### MusicBrainz API
 
