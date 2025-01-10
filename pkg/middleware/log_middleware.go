@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/xaviercrochet/turbo-octo-adventure/pkg/util"
 )
 
 // Wrap the response to capture the status code
@@ -59,18 +60,7 @@ func LogMiddleware(next http.Handler) http.Handler {
 		wrapped := wrapResponseWriter(w)
 
 		ctx := r.Context()
-		// retrieve trace id from context
-		traceId := ""
-		if id, ok := ctx.Value(TraceIDContextKey).(string); ok {
-			traceId = id
-		}
-
-		// Create a logger with the request metadata
-		logger := slog.With(
-			"method", r.Method,
-			"path", r.URL.Path,
-			"trace_id", traceId,
-		)
+		logger := util.DefaultLogger.FromContext(ctx)
 
 		// Process request...
 		next.ServeHTTP(wrapped, r)
@@ -79,6 +69,8 @@ func LogMiddleware(next http.Handler) http.Handler {
 
 		// Do log when the request is completed
 		logger.Info("http request completed",
+			"method", r.Method,
+			"path", r.URL.Path,
 			"status", wrapped.Status(),
 			"duration_ms", duration.Milliseconds(),
 		)
