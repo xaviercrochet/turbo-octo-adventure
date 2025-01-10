@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"text/template"
 
+	mw "github.com/xaviercrochet/turbo-octo-adventure/pkg/middleware"
 	"github.com/xaviercrochet/turbo-octo-adventure/pkg/net"
 	"github.com/xaviercrochet/turbo-octo-adventure/web/feed_api"
 	"github.com/zitadel/zitadel-go/v3/pkg/authentication"
@@ -60,10 +61,10 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	}
 
 	//initialize the authentication middleware
-	mw := authentication.Middleware(authN)
+	authMw := authentication.Middleware(authN)
 
 	// default authentication routes provided by the sdk
-	router.Handle("/auth/", authN)
+	router.Handle("/auth/", mw.LogMiddleware(authN))
 
 	/*
 	   This endpoint
@@ -74,12 +75,12 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 
 	   if the request is successfull, the user is redirected to /feed
 	*/
-	router.Handle("/select_feed", mw.RequireAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	router.Handle("/select_feed", mw.LogMiddleware(authMw.RequireAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		authCtx := mw.Context(req.Context())
+		authCtx := authMw.Context(req.Context())
 
 		// deserialize request payload
 		err := req.ParseForm()
@@ -114,7 +115,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 
 		// browser expect a http status 3XX if we want to redirect after a successfull post
 		http.Redirect(w, req, "/feed", http.StatusSeeOther)
-	})))
+	}))))
 
 	/*
 	   This endpoint
@@ -126,10 +127,10 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 
 	*/
 
-	router.Handle("/feed", mw.RequireAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	router.Handle("/feed", mw.LogMiddleware(authMw.RequireAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Using the [middleware.Context] function we can gather information about the authenticated user.
 		// This example will just print a JSON representation of the UserInfo of the typed [*oidc.UserInfoContext].
-		authCtx := mw.Context(req.Context())
+		authCtx := authMw.Context(req.Context())
 		feedPage := NewFeedPage(authCtx.UserInfo.GivenName, authCtx.UserInfo.FamilyName)
 
 		/*
@@ -160,11 +161,11 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 		if err != nil {
 			slog.Error("error writing feed response", "error", err)
 		}
-	})))
+	}))))
 
 	// This endpoint is accessible by anyone, but it will check if there already is a valid session (authentication).
 	// If there is an active session, the information will be put into the context for later retrieval.
-	router.Handle("/", mw.CheckAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	router.Handle("/", mw.LogMiddleware(authMw.CheckAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 
 		// redirect the user to /feed in case he is already authenticated
 		if authentication.IsAuthenticated(req.Context()) {
@@ -176,7 +177,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 		if err != nil {
 			slog.Error("error writing home page response", "error", err)
 		}
-	})))
+	}))))
 	return nil
 }
 
