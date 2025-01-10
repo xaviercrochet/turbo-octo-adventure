@@ -30,7 +30,7 @@ func NewLogger() *Logger {
 	}
 }
 
-// Create a new logger that contains values stored in the context
+// Create a new logger that logs values stored in the context
 func (l *Logger) FromContext(ctx context.Context) *Logger {
 	if ctx == nil {
 		return l
@@ -41,12 +41,25 @@ func (l *Logger) FromContext(ctx context.Context) *Logger {
 		return l
 	}
 
-	// Log the trace_id if it is present in the context
-	newLogger := l.Logger.With(
+	// If sender_trace_id is not present, only log the trace_id retrieved above
+	senderTraceID, ok := ctx.Value(SenderTraceIDContextKey).(string)
+	if !ok {
+		logger := l.Logger.With(
+			slog.String("trace_id", traceID),
+		)
+
+		return &Logger{
+			Logger: logger,
+		}
+	}
+
+	// Log sender_trace_id and trace_id
+	logger := l.Logger.With(
 		slog.String("trace_id", traceID),
+		slog.String("sender_trace_id", senderTraceID),
 	)
 
 	return &Logger{
-		Logger: newLogger,
+		Logger: logger,
 	}
 }

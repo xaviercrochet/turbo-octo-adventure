@@ -2,6 +2,7 @@ package feed_api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xaviercrochet/turbo-octo-adventure/pkg/net"
+	"github.com/xaviercrochet/turbo-octo-adventure/pkg/util"
 )
 
 type FeedClient struct {
@@ -34,12 +36,17 @@ Call /api/healthz
 
 return true if response is 200, false otherwise
 */
-func (c *FeedClient) CheckHealth() (bool, error) {
+func (c *FeedClient) CheckHealth(ctx context.Context) (bool, error) {
 	url := c.buildURL("healthz")
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return false, fmt.Errorf("failed creating http request: %v", err)
+	}
+
+	// Forward `trace_id`, this field will be logged by the api under `sender_trace_id`
+	if traceID, ok := ctx.Value(util.TraceIDContextKey).(string); ok {
+		req.Header.Add(util.HeaderSenderTraceID, traceID)
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -64,7 +71,7 @@ params:
 
 return the errors defined under pkg.net.errors based on the http status code of the response
 */
-func (c *FeedClient) SelectFeed(selectedFeed, accessToken string) error {
+func (c *FeedClient) SelectFeed(ctx context.Context, selectedFeed, accessToken string) error {
 	url := c.buildURL("select_feed")
 
 	// build the payload for the post request
@@ -84,6 +91,10 @@ func (c *FeedClient) SelectFeed(selectedFeed, accessToken string) error {
 
 	// build the authorization header
 	req.Header.Add("Authorization", "Bearer "+accessToken)
+	// Forward `trace_id`, this field will be logged by the api under `sender_trace_id`
+	if traceID, ok := ctx.Value(util.TraceIDContextKey).(string); ok {
+		req.Header.Add(util.HeaderSenderTraceID, traceID)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -107,7 +118,7 @@ params:
   return the errors defined under feed_api.errors based on the http status code of the response otherwise
 */
 
-func (c *FeedClient) GetFeed(accessToken string) (*FeedResponse, error) {
+func (c *FeedClient) GetFeed(ctx context.Context, accessToken string) (*FeedResponse, error) {
 	url := c.buildURL("feed")
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -117,6 +128,10 @@ func (c *FeedClient) GetFeed(accessToken string) (*FeedResponse, error) {
 
 	// build the authorization header
 	req.Header.Add("Authorization", "Bearer "+accessToken)
+	if traceID, ok := ctx.Value(util.TraceIDContextKey).(string); ok {
+		// Forward `trace_id`, this field will be logged by the api under `sender_trace_id`
+		req.Header.Add(util.HeaderSenderTraceID, traceID)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

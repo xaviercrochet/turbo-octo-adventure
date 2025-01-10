@@ -105,7 +105,7 @@ func SetupRoutes(serverCtx context.Context, router *http.ServeMux, options *Serv
 
 				// http client that integrate the feed api
 				feedClient := feed_api.NewFeedClient(options.apiHostname, options.apiPort)
-				if err := feedClient.SelectFeed(name, authCtx.Tokens.AccessToken); err == net.ErrNoAccess {
+				if err := feedClient.SelectFeed(ctx, name, authCtx.Tokens.AccessToken); err == net.ErrNoAccess {
 					logger.Error("select feed api call failed", "error", err)
 					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
@@ -148,14 +148,14 @@ func SetupRoutes(serverCtx context.Context, router *http.ServeMux, options *Serv
 				*/
 
 				feedClient := feed_api.NewFeedClient(options.apiHostname, options.apiPort)
-				if ok, err := feedClient.CheckHealth(); !ok {
+				if ok, err := feedClient.CheckHealth(ctx); !ok {
 					feedPage.Health = false
 					if err != nil {
 						logger.Error("feed api is down or unresponsive", "error", err)
 					}
 				} else {
 					// only query for feed if feed API is healthy
-					feed, err := feedClient.GetFeed(authCtx.Tokens.AccessToken)
+					feed, err := feedClient.GetFeed(ctx, authCtx.Tokens.AccessToken)
 					if err != nil {
 						logger.Error("feed api call failed", "error", err)
 						http.Error(w, err.Error(), http.StatusInternalServerError)
