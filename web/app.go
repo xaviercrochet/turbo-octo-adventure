@@ -5,12 +5,12 @@ import (
 	"embed"
 	"fmt"
 	"html"
-	"log/slog"
 	"net/http"
 	"text/template"
 
 	mw "github.com/xaviercrochet/turbo-octo-adventure/pkg/middleware"
 	"github.com/xaviercrochet/turbo-octo-adventure/pkg/net"
+	"github.com/xaviercrochet/turbo-octo-adventure/pkg/util"
 	"github.com/xaviercrochet/turbo-octo-adventure/web/feed_api"
 	"github.com/zitadel/zitadel-go/v3/pkg/authentication"
 	openid "github.com/zitadel/zitadel-go/v3/pkg/authentication/oidc"
@@ -44,7 +44,7 @@ func NewServerOptions(base64Key []byte, apiHostname, apiPort, domain, clientID, 
 /*
 - Setup the authentication context and its middleware and the routes of the web application
 */
-func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOptions) error {
+func SetupRoutes(serverCtx context.Context, router *http.ServeMux, options *ServerOptions) error {
 
 	// load html tempates
 	t, err := template.New("").ParseFS(templates, "templates/*.html")
@@ -53,7 +53,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	}
 
 	//setup authentication context
-	authN, err := authentication.New(ctx, zitadel.New(options.domain), string(options.base64Key),
+	authN, err := authentication.New(serverCtx, zitadel.New(options.domain), string(options.base64Key),
 		openid.DefaultAuthentication(options.clientID, options.redirectURI, string(options.base64Key)),
 	)
 	if err != nil {
@@ -78,11 +78,15 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	router.Handle("/select_feed",
 		mw.RequestContextMiddleware(
 			mw.LogMiddleware(authMw.RequireAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				ctx := req.Context()
+				logger := util.DefaultLogger.FromContext(ctx)
+
 				if req.Method != http.MethodPost {
 					http.Error(w, "not found", http.StatusNotFound)
 					return
 				}
-				authCtx := authMw.Context(req.Context())
+
+				authCtx := authMw.Context(ctx)
 
 				// deserialize request payload
 				err := req.ParseForm()
@@ -102,15 +106,15 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 				// http client that integrate the feed api
 				feedClient := feed_api.NewFeedClient(options.apiHostname, options.apiPort)
 				if err := feedClient.SelectFeed(name, authCtx.Tokens.AccessToken); err == net.ErrNoAccess {
-					slog.Error("select feed api call failed", "error", err)
+					logger.Error("select feed api call failed", "error", err)
 					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				} else if err == net.ErrNotAuthenticated {
-					slog.Error("select feed api call failed", "error", err)
+					logger.Error("select feed api call failed", "error", err)
 					http.Error(w, err.Error(), http.StatusForbidden)
 					return
 				} else if err != nil {
-					slog.Error("select feed api call failed", "error", err)
+					logger.Error("select feed api call failed", "error", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -132,9 +136,10 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	router.Handle("/feed",
 		mw.RequestContextMiddleware(
 			mw.LogMiddleware(authMw.RequireAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				// Using the [middleware.Context] function we can gather information about the authenticated user.
-				// This example will just print a JSON representation of the UserInfo of the typed [*oidc.UserInfoContext].
-				authCtx := authMw.Context(req.Context())
+				ctx := req.Context()
+				logger := util.DefaultLogger.FromContext(ctx)
+				authCtx := authMw.Context(ctx)
+
 				feedPage := NewFeedPage(authCtx.UserInfo.GivenName, authCtx.UserInfo.FamilyName)
 
 				/*
@@ -145,15 +150,14 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 				feedClient := feed_api.NewFeedClient(options.apiHostname, options.apiPort)
 				if ok, err := feedClient.CheckHealth(); !ok {
 					feedPage.Health = false
-
 					if err != nil {
-						slog.Error("feed api is down or unresponsive", "error", err)
+						logger.Error("feed api is down or unresponsive", "error", err)
 					}
 				} else {
 					// only query for feed if feed API is healthy
 					feed, err := feedClient.GetFeed(authCtx.Tokens.AccessToken)
 					if err != nil {
-						slog.Error("feed api call failed", "error", err)
+						logger.Error("feed api call failed", "error", err)
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
@@ -163,7 +167,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 
 				err = t.ExecuteTemplate(w, "feed.html", feedPage)
 				if err != nil {
-					slog.Error("error writing feed response", "error", err)
+					logger.Error("error writing feed response", "error", err)
 				}
 			})))))
 
@@ -172,16 +176,18 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	router.Handle("/",
 		mw.RequestContextMiddleware(
 			mw.LogMiddleware(authMw.CheckAuthentication()(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				ctx := req.Context()
+				logger := util.DefaultLogger.FromContext(ctx)
 
 				// redirect the user to /feed in case he is already authenticated
-				if authentication.IsAuthenticated(req.Context()) {
+				if authentication.IsAuthenticated(ctx) {
 					http.Redirect(w, req, "/feed", http.StatusFound)
 					return
 				}
 
 				err = t.ExecuteTemplate(w, "home.html", nil)
 				if err != nil {
-					slog.Error("error writing home page response", "error", err)
+					logger.Error("error writing home page response", "error", err)
 				}
 			})))))
 
