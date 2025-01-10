@@ -8,6 +8,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type contextKey = string
+
+const (
+	TraceIDContextKey contextKey = "trace_id"
+)
+
 // Wrap the response to capture the status code
 type responseWriter struct {
 	http.ResponseWriter
