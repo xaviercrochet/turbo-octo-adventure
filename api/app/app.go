@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/xaviercrochet/turbo-octo-adventure/api/musicbrainz"
+	mw "github.com/xaviercrochet/turbo-octo-adventure/pkg/middleware"
 	"github.com/xaviercrochet/turbo-octo-adventure/pkg/net"
 	"github.com/zitadel/zitadel-go/v3/pkg/authorization"
 	"github.com/zitadel/zitadel-go/v3/pkg/authorization/oauth"
@@ -68,17 +69,16 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	}
 
 	// initialize the authorization middleware
-	mw := middleware.New(authZ)
+	authMw := middleware.New(authZ)
 
 	// This endpoint is accessible by anyone and will always return "200 OK" to indicate the API is running
-	router.Handle("/api/healthz", http.HandlerFunc(
+	router.Handle("/api/healthz", mw.LogMiddleware(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			slog.Info("/api/healthz", "verb", r.Method)
 			err = jsonResponse(w, "OK", http.StatusOK)
 			if err != nil {
 				slog.Error("error writing response", "error", err)
 			}
-		}))
+		})))
 
 	/*
 
@@ -95,15 +95,14 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	   - 404 if http verb is not POST or username doesn't exist
 	*/
 
-	router.Handle("/api/select_feed", mw.RequireAuthorization()(http.HandlerFunc(
+	router.Handle("/api/select_feed", mw.LogMiddleware(authMw.RequireAuthorization()(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			slog.Info("/api/select_feed", "verb", r.Method)
 			if r.Method != http.MethodPost {
 				http.Error(w, "not found", http.StatusNotFound)
 				return
 			}
 
-			authCtx := mw.Context(r.Context())
+			authCtx := authMw.Context(r.Context())
 			if !authCtx.IsGrantedRole("admin") {
 				slog.Warn("user doesn't have access to the resource", "id", authCtx.UserID(), "username", authCtx.Username)
 				http.Error(w, "forbidden", http.StatusForbidden)
@@ -136,7 +135,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 			if err != nil {
 				slog.Error("error writing response", "error", err)
 			}
-		})))
+		}))))
 
 	/*
 	   Retrieve music feed from feed API, based on selectedUsername
@@ -149,15 +148,14 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 	   - 404 if http verb is not GET
 	*/
 
-	router.Handle("/api/feed", mw.RequireAuthorization()(http.HandlerFunc(
+	router.Handle("/api/feed", mw.LogMiddleware(authMw.RequireAuthorization()(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			slog.Info("/api/feed", "verb", r.Method)
 			if r.Method != http.MethodGet {
 				http.Error(w, "not found", http.StatusNotFound)
 				return
 			}
 
-			authCtx := mw.Context(r.Context())
+			authCtx := authMw.Context(r.Context())
 			slog.Info("retrieving user feed", "id", authCtx.UserID(), "username", authCtx.Username, "feed_username", getSelectedUsername())
 
 			// retrieve music feed from musicbrainz API
@@ -183,7 +181,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 			if err != nil {
 				slog.Error("error writing response", "error", err)
 			}
-		})))
+		}))))
 
 	return nil
 }
