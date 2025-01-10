@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"sync"
 
 	"github.com/xaviercrochet/turbo-octo-adventure/api/musicbrainz"
 	mw "github.com/xaviercrochet/turbo-octo-adventure/pkg/middleware"
 	"github.com/xaviercrochet/turbo-octo-adventure/pkg/net"
+	"github.com/xaviercrochet/turbo-octo-adventure/pkg/util"
 	"github.com/zitadel/zitadel-go/v3/pkg/authorization"
 	"github.com/zitadel/zitadel-go/v3/pkg/authorization/oauth"
 	"github.com/zitadel/zitadel-go/v3/pkg/http/middleware"
@@ -61,9 +61,9 @@ func NewServerOptions(domain, keyFilePath, port string) *ServerOptions {
 - Setup the authentication context and its middleware and the routes of the api
 */
 
-func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOptions) error {
+func SetupRoutes(serverCtx context.Context, router *http.ServeMux, options *ServerOptions) error {
 	//setup authorziation context
-	authZ, err := authorization.New(ctx, zitadel.New(options.domain), oauth.DefaultAuthorization(options.keyFilePath))
+	authZ, err := authorization.New(serverCtx, zitadel.New(options.domain), oauth.DefaultAuthorization(options.keyFilePath))
 	if err != nil {
 		return fmt.Errorf("zitadel sdk could not initialize: %v", err)
 	}
@@ -76,9 +76,10 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 		mw.RequestContextMiddleware(
 			mw.LogMiddleware(http.HandlerFunc(
 				func(w http.ResponseWriter, r *http.Request) {
+					logger := util.DefaultLogger.FromContext(r.Context())
 					err = jsonResponse(w, "OK", http.StatusOK)
 					if err != nil {
-						slog.Error("error writing response", "error", err)
+						logger.Error("error writing response", "error", err)
 					}
 				}))))
 
@@ -101,14 +102,18 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 		mw.LogMiddleware(
 			authMw.RequireAuthorization()(http.HandlerFunc(
 				func(w http.ResponseWriter, r *http.Request) {
+					ctx := r.Context()
+					logger := util.DefaultLogger.FromContext(ctx)
+
+					// this endpoint only supports POST requests:w
 					if r.Method != http.MethodPost {
 						http.Error(w, "not found", http.StatusNotFound)
 						return
 					}
 
-					authCtx := authMw.Context(r.Context())
+					authCtx := authMw.Context(ctx)
 					if !authCtx.IsGrantedRole("admin") {
-						slog.Warn("user doesn't have access to the resource", "id", authCtx.UserID(), "username", authCtx.Username)
+						logger.Warn("user doesn't have access to the resource", "id", authCtx.UserID(), "username", authCtx.Username)
 						http.Error(w, "forbidden", http.StatusForbidden)
 						return
 					}
@@ -116,7 +121,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 					// deserialize the request payload
 					body, err := io.ReadAll(r.Body)
 					if err != nil {
-						slog.Warn("could not read request body", "id", authCtx.UserID(), "username", authCtx.Username, "error", err)
+						logger.Warn("could not read request body", "id", authCtx.UserID(), "username", authCtx.Username, "error", err)
 						http.Error(w, "Error reading request body", http.StatusBadRequest)
 						return
 					}
@@ -125,7 +130,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 					var selectedFeed SelectedFeed
 					err = json.Unmarshal(body, &selectedFeed)
 					if err != nil {
-						slog.Warn("could not deserialize request body", "id", authCtx.UserID(), "username", authCtx.Username, "error", err)
+						logger.Warn("could not deserialize request body", "id", authCtx.UserID(), "username", authCtx.Username, "error", err)
 						http.Error(w, "failed to deserialize request body", http.StatusBadRequest)
 						return
 					}
@@ -137,7 +142,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 					// OK
 					err = jsonResponse(w, "OK", http.StatusOK)
 					if err != nil {
-						slog.Error("error writing response", "error", err)
+						logger.Error("error writing response", "error", err)
 					}
 				})))))
 
@@ -156,13 +161,18 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 		mw.RequestContextMiddleware(
 			mw.LogMiddleware(authMw.RequireAuthorization()(http.HandlerFunc(
 				func(w http.ResponseWriter, r *http.Request) {
+					ctx := r.Context()
+					logger := util.DefaultLogger.FromContext(ctx)
+
+					// this endpoint only supports GET requests
 					if r.Method != http.MethodGet {
 						http.Error(w, "not found", http.StatusNotFound)
 						return
 					}
 
-					authCtx := authMw.Context(r.Context())
-					slog.Info("retrieving user feed", "id", authCtx.UserID(), "username", authCtx.Username, "feed_username", getSelectedUsername())
+					authCtx := authMw.Context(ctx)
+
+					logger.Info("retrieving user feed", "id", authCtx.UserID(), "username", authCtx.Username, "feed_username", getSelectedUsername())
 
 					// retrieve music feed from musicbrainz API
 					feed, err := musicbrainz.GetFeed(getSelectedUsername())
@@ -171,7 +181,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 					if err == net.ErrNotFound {
 						http.Error(w, "feed not found", http.StatusNotFound)
 					} else if err != nil {
-						slog.Warn("musicbrainz api call failed", "error", err)
+						logger.Warn("musicbrainz api call failed", "error", err)
 						http.Error(w, "musicbrainz api call failed", http.StatusInternalServerError)
 					}
 
@@ -185,7 +195,7 @@ func SetupRoutes(ctx context.Context, router *http.ServeMux, options *ServerOpti
 
 					err = jsonResponse(w, resp, http.StatusOK)
 					if err != nil {
-						slog.Error("error writing response", "error", err)
+						logger.Error("error writing response", "error", err)
 					}
 				})))))
 
