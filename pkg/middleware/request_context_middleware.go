@@ -17,6 +17,11 @@ func RequestContextMiddleware(next http.Handler) http.Handler {
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, util.TraceIDContextKey, traceID)
 
+		// The value of this header will be present in every log entries
+		if senderTraceID := r.Header.Get(util.HeaderSenderTraceID); senderTraceID != "" {
+			ctx = context.WithValue(ctx, util.SenderTraceIDContextKey, senderTraceID)
+		}
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
