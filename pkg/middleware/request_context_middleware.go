@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/xaviercrochet/turbo-octo-adventure/pkg/util"
 )
 
 // This middleware "enrich" the context with data (i.e. a trace_id)
@@ -14,7 +15,7 @@ func RequestContextMiddleware(next http.Handler) http.Handler {
 		traceID := uuid.New().String()
 
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, TraceIDContextKey, traceID)
+		ctx = context.WithValue(ctx, util.TraceIDContextKey, traceID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
